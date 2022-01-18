@@ -1,4 +1,3 @@
-//Not thread safe due to shared buffer
 using System;
 using System.IO;
 using System.IO.Compression;
@@ -7,25 +6,24 @@ namespace VirtualRadio.Common
 {
     public static class Compression
     {
-        private static byte[] buffer = new byte[8 * 1024 * 1024];
-        public static Tuple<int, byte[]> Compress(byte[] input, int offset, int length)
+        public static int Compress(byte[] input, int offset, int length, byte[] buffer)
         {
-            Tuple<int, byte[]> retVal = null;
+            int retVal = 0;
             using (MemoryStream ms = new MemoryStream(buffer))
             {
                 using (ZLibStream zls = new ZLibStream(ms, CompressionMode.Compress))
                 {
                     zls.Write(input, offset, length);
                     zls.Flush();
-                    retVal = new Tuple<int, byte[]>((int)ms.Position, buffer);
+                    retVal = (int)ms.Position;
                 }
             }
             return retVal;
         }
 
-        public static Tuple<int, byte[]> Decompress(byte[] input, int offset, int length)
+        public static int Decompress(byte[] input, int offset, int length, byte[] buffer)
         {
-            Tuple<int, byte[]> retVal = null;
+            int retVal = 0;
             using (MemoryStream ms = new MemoryStream(input, offset, length))
             {
                 using (ZLibStream zls = new ZLibStream(ms, CompressionMode.Decompress))
@@ -40,7 +38,7 @@ namespace VirtualRadio.Common
                             break;
                         }
                     }
-                    retVal = new Tuple<int, byte[]>(decompressBytes, buffer);
+                    retVal = decompressBytes;
                 }
             }
             return retVal;

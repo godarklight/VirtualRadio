@@ -1,33 +1,15 @@
-﻿using System;
-using VirtualRadio.Common;
+﻿using System.Threading;
 
-namespace VirtualRadio
+namespace VirtualRadio.Server
 {
     class Program
     {
-        private static TcpServer tcps;
+        private static RadioServer radioServer;
         public static void Main()
         {
-            Random r = new Random();
-            byte[] randomData = new byte[1024 * 1024];
-            r.NextBytes(randomData);
-
-
-            Tuple<int, byte[]> compressBytes = Compression.Compress(randomData, 0, randomData.Length);
-            Tuple<int, byte[]> decompressBytes = Compression.Decompress(compressBytes.Item2, 0, compressBytes.Item1);
-
-            Console.WriteLine($"Compression ratio: {compressBytes.Item1 / (double)randomData.Length}");
-
-            for (int i = 0; i < randomData.Length; i++)
-            {
-                if (randomData[i] != decompressBytes.Item2[i])
-                {
-                    Console.WriteLine("Error");
-                }
-            }
-
-            tcps = new TcpServer();
-            tcps.Run();
+            Thread.CurrentThread.Name = "Main Thread";
+            radioServer = new RadioServer();
+            radioServer.Run();
         }
     }
 }

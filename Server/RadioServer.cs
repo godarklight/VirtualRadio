@@ -7,21 +7,21 @@ using System.Threading;
 using System.IO;
 using VirtualRadio.Common;
 
-namespace VirtualRadio
+namespace VirtualRadio.Server
 {
-    public class TcpServer
+    public class RadioServer
     {
         TcpListener listener;
         List<Client> clients = new List<Client>();
-        const int samplesSec = 250000;
-        const int chunksSec = 50;
+        public const int chunksSec = 50;
+        Client addClient = null;
 
         //Reset chunk ID daily
         const int resetChunk = 24 * 60 * 60 * chunksSec;
 
-        public TcpServer()
+        public RadioServer()
         {
-            listener = new TcpListener(new IPEndPoint(IPAddress.IPv6Any, 1234));
+            listener = new TcpListener(new IPEndPoint(IPAddress.IPv6Any, 1235));
             listener.Server.DualMode = true;
             listener.Start();
             listener.BeginAcceptTcpClient(ConnectCallback, listener);
@@ -31,7 +31,8 @@ namespace VirtualRadio
         {
             TcpClient tcpClient = listener.EndAcceptTcpClient(ar);
             Client client = new Client(tcpClient);
-            clients.Add(client);
+            addClient = client;
+            listener.BeginAcceptTcpClient(ConnectCallback, listener);
         }
 
         public void Run()
@@ -41,26 +42,35 @@ namespace VirtualRadio
             long startTime = DateTime.UtcNow.Ticks;
 
             //Send buffer
-            Complex[] sendSamples = new Complex[samplesSec / chunksSec];
-            byte[] sendBuffer = new byte[2 * samplesSec / chunksSec];
+            Complex[] sendSamples = new Complex[Constants.SERVER_BANDWIDTH / chunksSec];
+            byte[] sendBuffer = new byte[2 * sendSamples.Length];
+            byte[] compressBuffer = new byte[1 * 1024 * 1024];
 
             //Server main loop
             bool running = true;
             while (running)
             {
                 //Clear send buffer and
-                Array.Clear(sendBuffer, 0, sendBuffer.Length);
+                Array.Clear(sendSamples, 0, sendSamples.Length);
                 currentChunk++;
+
+                //Load clients data into samples
+                foreach (Client c in clients)
+                {
+                    c.WriteSamples(sendSamples);
+                }
 
                 //Generate samples
                 for (int i = 0; i < sendSamples.Length; i++)
                 {
                     Complex sendSample = sendSamples[i];
-                    byte iByte = (byte)(((sendSample.Real + 1.0) / 2.0) * byte.MaxValue);
-                    byte qByte = (byte)(((sendSample.Imaginary + 1.0) / 2.0) * byte.MaxValue);
+                    byte iByte = (byte)(((sendSample.Real + 1.0) / 2.0) * 256);
+                    byte qByte = (byte)(((sendSample.Imaginary + 1.0) / 2.0) * 256);
                     sendBuffer[i * 2] = iByte;
                     sendBuffer[i * 2 + 1] = qByte;
                 }
+
+                int compressLength = Compression.Compress(sendBuffer, 0, sendBuffer.Length, compressBuffer);
 
                 //TCP send and disconnect
                 Client removeClient = null;
@@ -71,11 +81,16 @@ namespace VirtualRadio
                         removeClient = c;
                         continue;
                     }
-                    c.QueueBytes(sendBuffer);
+                    c.QueueBytes(compressBuffer, compressLength);
                 }
                 if (removeClient != null)
                 {
                     clients.Remove(removeClient);
+                }
+                if (addClient != null)
+                {
+                    clients.Add(addClient);
+                    addClient = null;
                 }
 
                 //Reset chunk IDs daily
@@ -101,54 +116,5 @@ namespace VirtualRadio
                 }
             }
         }
-
-        private static void WriteComplex(Complex[] input, string fileName)
-        {
-            if (File.Exists(fileName))
-            {
-                File.Delete(fileName);
-            }
-            using (StreamWriter sw = new StreamWriter(fileName))
-            {
-                for (int i = 0; i < input.Length; i++)
-                {
-                    sw.WriteLine($"{input[i].Real} {input[i].Imaginary}");
-                }
-            }
-        }
-
-        private static double[] LoadWav(string filename)
-        {
-            IFilter wavFilter = new WindowedSinc(9000, 2048, 48000, false);
-            byte[] wavRaw = File.ReadAllBytes(filename);
-            double[] wavSamples = new double[wavRaw.Length / 2];
-            for (int i = 0; i < wavSamples.Length; i++)
-            {
-                short wavData = (short)(wavRaw[(i * 2)]);
-                wavData += (short)(wavRaw[1 + (i * 2)] << 8);
-                double wavAmplitude = wavData / (double)short.MaxValue;
-                wavFilter.AddSample(wavAmplitude);
-                wavSamples[i] = wavFilter.GetSample();
-                wavSamples[i] = wavAmplitude;
-            }
-            return wavSamples;
-        }
-
-        private static void WriteWav(string filename, double[] samples)
-        {
-            using (FileStream fs = new FileStream(filename, FileMode.Create))
-            {
-                for (int i = 0; i < samples.Length; i++)
-                {
-                    short wavData = (short)(samples[i] * short.MaxValue);
-                    byte lower = (byte)(wavData & 0xFF);
-                    byte upper = (byte)((wavData & 0xFF00) >> 8);
-                    fs.WriteByte(lower);
-                    fs.WriteByte(upper);
-                }
-            }
-        }
-
-
     }
 }
