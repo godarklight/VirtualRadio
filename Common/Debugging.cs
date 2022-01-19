@@ -6,7 +6,7 @@ namespace VirtualRadio.Common
     public static class Debugging
     {
 
-        private static void WriteComplex(Complex[] input, string fileName)
+        public static void WriteComplex(Complex[] input, string fileName)
         {
             if (File.Exists(fileName))
             {
@@ -21,7 +21,7 @@ namespace VirtualRadio.Common
             }
         }
 
-        private static double[] LoadWav(string filename)
+        public static double[] LoadWav(string filename)
         {
             IFilter wavFilter = new WindowedSinc(9000, 2048, 48000, false);
             byte[] wavRaw = File.ReadAllBytes(filename);
@@ -38,7 +38,7 @@ namespace VirtualRadio.Common
             return wavSamples;
         }
 
-        private static void WriteWav(string filename, double[] samples)
+        public static void WriteWav(string filename, double[] samples)
         {
             using (FileStream fs = new FileStream(filename, FileMode.Create))
             {

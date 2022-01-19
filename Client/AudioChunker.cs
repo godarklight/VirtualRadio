@@ -13,10 +13,10 @@ namespace VirtualRadio.Client
 {
     class AudioChunker
     {
-        private IFilter audioFilter = new WindowedSinc(5000, 2048, 48000, false);
+        private IFilter audioFilter = new WindowedSinc(2700, 1024, 48000, false);
+        HilbertSmoother hilbertSmoother = new HilbertSmoother();
         private ConcurrentQueue<byte[]> sendQueue = new ConcurrentQueue<byte[]>();
         private ConcurrentQueue<byte[]> freeQueue = new ConcurrentQueue<byte[]>();
-        private Complex[] samples = new Complex[Constants.CHUNK_SIZE];
         private Thread processThread = null;
         private bool isRunning = true;
         private byte[] chunk = null;
@@ -44,6 +44,7 @@ namespace VirtualRadio.Client
             {
                 if (isReading)
                 {
+                    Complex[] samples = new Complex[Constants.CHUNK_SIZE];
                     for (int i = 0; i < Constants.CHUNK_SIZE; i++)
                     {
                         double rawDouble = FormatConvert.S16ToDouble(chunk, i * 2);
@@ -51,18 +52,23 @@ namespace VirtualRadio.Client
                         double filteredDouble = audioFilter.GetSample();
                         samples[i] = filteredDouble;
                     }
-                    Complex[] hilbert = Hilbert.Calculate(samples);
-                    byte[] writeBuffer = null;
-                    //Grab a free buffer
-                    while (!freeQueue.TryDequeue(out writeBuffer))
+                    hilbertSmoother.AddChunk(samples);
+                    Complex[] hilbertSmooth = hilbertSmoother.GetChunk();
+                    if (hilbertSmooth != null)
                     {
-                        Thread.Sleep(1);
+                        //Complex[] hilbert = Hilbert.Calculate(samples);
+                        byte[] writeBuffer = null;
+                        //Grab a free buffer
+                        while (!freeQueue.TryDequeue(out writeBuffer))
+                        {
+                            Thread.Sleep(1);
+                        }
+                        for (int i = 0; i < Constants.CHUNK_SIZE; i++)
+                        {
+                            FormatConvert.IQToByteArray(hilbertSmooth[i], writeBuffer, i * 2);
+                        }
+                        sendQueue.Enqueue(writeBuffer);
                     }
-                    for (int i = 0; i < Constants.CHUNK_SIZE; i++)
-                    {
-                        FormatConvert.IQToByteArray(hilbert[i], writeBuffer, i * 2);
-                    }
-                    sendQueue.Enqueue(writeBuffer);
                     isReading = false;
                 }
                 Thread.Sleep(1);

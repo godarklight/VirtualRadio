@@ -12,6 +12,7 @@ namespace VirtualRadio.Server
 {
     public class Client
     {
+        public bool sendIQ = false;
         public double SEND_VOLUME = 0.2;
         public TcpClient tcpClient;
         public bool connected = true;
@@ -256,6 +257,10 @@ namespace VirtualRadio.Server
                     Array.Reverse(u8);
                     vfo = BitConverter.ToDouble(u8);
                     break;
+                case MessageType.SET_MODE:
+                    int radioModeInt = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(receiveBuffer, 0));
+                    radioMode = (RadioMode)radioModeInt;
+                    break;
                 case MessageType.DATA:
                     int bytesToAdd = Compression.Decompress(receiveBuffer, 0, receiveSize, buffer);
                     Complex[] free = null;
@@ -268,6 +273,9 @@ namespace VirtualRadio.Server
                         free[i] = FormatConvert.ByteArrayToIQ(buffer, i * 2);
                     }
                     transmitQueue.Enqueue(free);
+                    break;
+                case MessageType.ENABLE_IQ:
+                    sendIQ = true;
                     break;
             }
             lastRecieve = DateTime.UtcNow.Ticks;

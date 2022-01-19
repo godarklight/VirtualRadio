@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using VirtualRadio.Common;
 namespace VirtualRadio.Client
 {
     class Program
@@ -9,12 +10,17 @@ namespace VirtualRadio.Client
         public static void Main(string[] args)
         {
             string radioServerAddress = "godarklight.privatedns.org:1235";
+            int audioPort = 1236;
             if (args.Length >= 1)
             {
                 radioServerAddress = args[0];
             }
+            if (args.Length >= 2)
+            {
+                audioPort = Int32.Parse(args[1]);
+            }
             Thread.CurrentThread.Name = "Main Thread";
-            radioClient = new RadioClient(radioServerAddress);
+            radioClient = new RadioClient(radioServerAddress, audioPort);
             if (!radioClient.running)
             {
                 Console.WriteLine("Failed to connect to server");
@@ -50,7 +56,34 @@ namespace VirtualRadio.Client
                         currentLine = currentLine.Substring(0, mIndex);
                         divide = 1000000;
                     }
-                    radioClient.sendVfo = double.Parse(currentLine) / divide;
+                    double sendVfo = double.Parse(currentLine) / divide;
+                    if (sendVfo < 0)
+                    {
+                        sendVfo = -1;
+                        Console.WriteLine("VFO frequency must be above 0");
+                    }
+                    if (sendVfo > 250000)
+                    {
+                        sendVfo = -1;
+                        Console.WriteLine("VFO frequency must be below 250000");
+                    }
+                    radioClient.sendVfo = sendVfo;
+                }
+                if (currentLine == "m")
+                {
+                    Console.WriteLine("Select one of the following modes:");
+                    foreach (string valid in Enum.GetNames<RadioMode>())
+                    {
+                        Console.WriteLine(valid);
+                    }
+                    currentLine = Console.ReadLine();
+                    //Default to upper side band
+                    RadioMode mode = RadioMode.USB;
+                    if (!Enum.TryParse<RadioMode>(currentLine, true, out mode))
+                    {
+                        Console.WriteLine("Failed to parse, defaulting to upper side band");
+                    }
+                    radioClient.sendMode = mode;
                 }
             }
             radioClient.Stop();

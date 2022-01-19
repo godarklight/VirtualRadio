@@ -81,7 +81,10 @@ namespace VirtualRadio.Server
                         removeClient = c;
                         continue;
                     }
-                    c.QueueBytes(compressBuffer, compressLength);
+                    if (c.sendIQ)
+                    {
+                        c.QueueBytes(compressBuffer, compressLength);
+                    }
                 }
                 if (removeClient != null)
                 {

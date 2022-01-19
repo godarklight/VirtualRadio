@@ -12,7 +12,7 @@ namespace VirtualRadio.Client
 {
     class RadioClient
     {
-        public RadioMode mode = RadioMode.AM;
+
         public bool running = true;
         private byte[] u8 = new byte[8];
         AudioChunker chunker = new AudioChunker();
@@ -27,21 +27,38 @@ namespace VirtualRadio.Client
         private bool receiveHeader = true;
         private MessageType receiveType = MessageType.HEARTBEAT;
         public double sendVfo = -1;
+        public RadioMode? sendMode = null;
         List<TcpClient> rtlClients = new List<TcpClient>();
         TcpClient serverConnection;
         TcpListener rtlServer;
         TcpListener audioServer;
         TcpClient audioConnection;
-        public RadioClient(string radioServerAddress)
+        public RadioClient(string radioServerAddress, int audioPort)
         {
-            rtlServer = new TcpListener(IPAddress.IPv6Any, 1234);
-            rtlServer.Server.DualMode = true;
-            rtlServer.Start();
-            rtlServer.BeginAcceptTcpClient(RtlConnect, null);
-            audioServer = new TcpListener(IPAddress.IPv6Any, 1236);
-            audioServer.Server.DualMode = true;
-            audioServer.Start();
-            audioServer.BeginAcceptTcpClient(AudioConnect, null);
+            try
+            {
+                rtlServer = new TcpListener(IPAddress.IPv6Any, 1234);
+                rtlServer.Server.DualMode = true;
+                rtlServer.Start();
+                rtlServer.BeginAcceptTcpClient(RtlConnect, null);
+            }
+            catch
+            {
+                Console.WriteLine("Disabling IQ server - already running");
+                rtlServer = null;
+            }
+            try
+            {
+                audioServer = new TcpListener(IPAddress.IPv6Any, audioPort);
+                audioServer.Server.DualMode = true;
+                audioServer.Start();
+                audioServer.BeginAcceptTcpClient(AudioConnect, null);
+            }
+            catch
+            {
+                Console.WriteLine("Disabling Audio Input - already running");
+                audioServer = null;
+            }
 
             int port = 1235;
             int splitIndex = radioServerAddress.IndexOf(":", StringComparison.InvariantCulture);
@@ -134,7 +151,7 @@ namespace VirtualRadio.Client
 
         public void AudioConnect(IAsyncResult ar)
         {
-            TcpClient newClient = rtlServer.EndAcceptTcpClient(ar);
+            TcpClient newClient = audioServer.EndAcceptTcpClient(ar);
             if (audioConnection != null)
             {
                 try
@@ -154,18 +171,16 @@ namespace VirtualRadio.Client
 
         public void Run()
         {
+            if (running && rtlServer != null)
+            {
+                BitConverter.GetBytes(IPAddress.HostToNetworkOrder((int)MessageType.ENABLE_IQ)).CopyTo(sendBuffer, 0);
+                Array.Clear(sendBuffer, 4, 4);
+                serverConnection.GetStream().Write(sendBuffer, 0, 8);
+            }
             while (running)
             {
                 bool sleep = true;
                 //VFO setting
-                if (sendVfo < 0 && sendVfo != -1)
-                {
-                    Console.WriteLine("VFO frequency must be above 0");
-                }
-                if (sendVfo > 250000)
-                {
-                    Console.WriteLine("VFO frequency must be below 250000");
-                }
                 if (sendVfo != -1)
                 {
                     BitConverter.GetBytes(IPAddress.HostToNetworkOrder((int)MessageType.SET_VFO)).CopyTo(sendBuffer, 0);
@@ -178,6 +193,14 @@ namespace VirtualRadio.Client
                     u8.CopyTo(sendBuffer, 8);
                     serverConnection.GetStream().Write(sendBuffer, 0, 16);
                     sendVfo = -1;
+                }
+                if (sendMode != null)
+                {
+                    BitConverter.GetBytes(IPAddress.HostToNetworkOrder((int)MessageType.SET_MODE)).CopyTo(sendBuffer, 0);
+                    BitConverter.GetBytes(IPAddress.HostToNetworkOrder(4)).CopyTo(sendBuffer, 4);
+                    BitConverter.GetBytes(IPAddress.HostToNetworkOrder((int)sendMode)).CopyTo(sendBuffer, 8);
+                    serverConnection.GetStream().Write(sendBuffer, 0, 12);
+                    sendMode = null;
                 }
                 if (serverConnection.Available > 0)
                 {
