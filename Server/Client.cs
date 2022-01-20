@@ -283,9 +283,9 @@ namespace VirtualRadio.Server
                             connected = false;
                         }
                     }
-                    for (int i = 0; i < bytesToAdd / 2; i++)
+                    for (int i = 0; i < bytesToAdd / 4; i++)
                     {
-                        free[i] = FormatConvert.ByteArrayToIQ(buffer, i * 2);
+                        free[i] = FormatConvert.ByteArrayToIQ16(buffer, i * 4);
                     }
                     transmitQueue.Enqueue(free);
                     break;

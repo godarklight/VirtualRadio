@@ -29,7 +29,7 @@ namespace VirtualRadio.Client
             processThread.Start();
             for (int i = 0; i < 16; i++)
             {
-                freeQueue.Enqueue(new byte[2 * Constants.CHUNK_SIZE]);
+                freeQueue.Enqueue(new byte[4 * Constants.CHUNK_SIZE]);
             }
         }
 
@@ -75,7 +75,7 @@ namespace VirtualRadio.Client
                         }
                         for (int i = 0; i < Constants.CHUNK_SIZE; i++)
                         {
-                            FormatConvert.IQToByteArray(hilbertSmooth[i], writeBuffer, i * 2);
+                            FormatConvert.IQToByteArray16(hilbertSmooth[i], writeBuffer, i * 4);
                         }
                         sendQueue.Enqueue(writeBuffer);
                     }
