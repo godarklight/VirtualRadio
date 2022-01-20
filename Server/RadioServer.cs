@@ -54,11 +54,11 @@ namespace VirtualRadio.Server
             {
                 //Clear send buffer and
                 Array.Clear(sendSamples, 0, sendSamples.Length);
-                
+
                 //Add noise
                 for (int i = 0; i < sendSamples.Length; i++)
                 {
-                    sendSamples[i] = new Complex(0.01 * rand.NextDouble(), 0.01 * rand.NextDouble());
+                    sendSamples[i] = new Complex(1.0 / 128.0 * rand.NextDouble(), 0.01 * rand.NextDouble());
                 }
 
                 currentChunk++;
