@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Numerics;
 using System.Net;
@@ -34,8 +34,8 @@ namespace VirtualRadio.Server
         double sendSampleTime = 0;
         Complex[] transmitSamples = null;
         int transmitPos = 0;
-        Queue<Complex[]> transmitQueue = new Queue<Complex[]>();
-        Queue<Complex[]> freeQueue = new Queue<Complex[]>();
+        ConcurrentQueue<Complex[]> transmitQueue = new ConcurrentQueue<Complex[]>();
+        ConcurrentQueue<Complex[]> freeQueue = new ConcurrentQueue<Complex[]>();
         double audioServerSampleRatio = Constants.AUDIO_RATE / (double)Constants.SERVER_BANDWIDTH;
         long transmitDelay = 0;
         string remoteEndpoint = null;
