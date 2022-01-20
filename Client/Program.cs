@@ -32,7 +32,7 @@ namespace VirtualRadio.Client
             Console.WriteLine("v: Set transmit carrier frequency [0-250000]");
             Console.WriteLine("m: Set mode [AM,FM,USB,LSB]");
             Console.WriteLine("q: Quit");
-            while (true)
+            while (radioClient.running)
             {
                 string currentLine = Console.ReadLine();
                 if (currentLine == "q")

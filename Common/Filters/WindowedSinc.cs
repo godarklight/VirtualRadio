@@ -29,9 +29,9 @@ namespace VirtualRadio.Common
             {
                 int adjustI = i - (filterValues.Length / 2);
                 //Hamming window
-                double window = 0.54 - (0.46 * Math.Cos(Math.Tau * i / (double)points));
+                //double window = 0.54 - (0.46 * Math.Cos(Math.Tau * i / (double)points));
                 //Blackman
-                //double window = 0.42 - (0.5 * Math.Cos(Math.Tau * i / (double)points)) + (0.08 * Math.Cos(2 * Math.Tau * i / (double)points));
+                double window = 0.42 - (0.5 * Math.Cos(Math.Tau * i / (double)points)) + (0.08 * Math.Cos(2 * Math.Tau * i / (double)points));
 
                 //Mid point
                 if (adjustI == 0)

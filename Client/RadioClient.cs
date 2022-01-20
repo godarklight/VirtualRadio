@@ -288,8 +288,17 @@ namespace VirtualRadio.Client
                     chunker.ReturnFreeBuffer(sendChunk);
                     BitConverter.GetBytes(IPAddress.HostToNetworkOrder((int)MessageType.DATA)).CopyTo(sendBuffer, 0);
                     BitConverter.GetBytes(IPAddress.HostToNetworkOrder((int)compressLength)).CopyTo(sendBuffer, 4);
-                    serverConnection.GetStream().Write(sendBuffer, 0, 8);
-                    serverConnection.GetStream().Write(compressBuffer, 0, compressLength);
+                    try
+                    {
+                        serverConnection.GetStream().Write(sendBuffer, 0, 8);
+                        serverConnection.GetStream().Write(compressBuffer, 0, compressLength);
+                    }
+                    catch
+                    {
+                        Console.WriteLine("Lost connection to server");
+                        Stop();
+                        return;
+                    }
                 }
 
                 if (sleep)

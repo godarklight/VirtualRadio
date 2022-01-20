@@ -33,13 +33,35 @@ namespace VirtualRadio.Client
             }
         }
 
+        private IFilter GenerateFilterAMFM(int index)
+        {
+            if (index == 0)
+            {
+                return new WindowedSinc(5000, 1024, 48000, false);
+            }
+            return new Butterworth(5000, 48000, false);
+
+        }
+
+        private IFilter GenerateFilterSSB(int index)
+        {
+            if (index == 0)
+            {
+                return new WindowedSinc(2700, 1024, 48000, false);
+            }
+            return new Butterworth(2700, 48000, false);
+        }
+
         public void SetFilterMode(RadioMode mode)
         {
-            if (mode == RadioMode.USB || mode == RadioMode.LSB)
+            if (mode == RadioMode.AM || mode == RadioMode.FM)
             {
-                audioFilter = new WindowedSinc(2700, 1024, 48000, false);
+                audioFilter = new LayeredFilter(GenerateFilterAMFM, 2);
             }
-            audioFilter = new WindowedSinc(5000, 2048, 48000, false);
+            else
+            {
+                audioFilter = new LayeredFilter(GenerateFilterSSB, 2);
+            }
         }
 
         public void Stop()

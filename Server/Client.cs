@@ -13,7 +13,7 @@ namespace VirtualRadio.Server
     public class Client
     {
         public bool sendIQ = false;
-        public double SEND_VOLUME = 0.05;
+        public double SEND_VOLUME = 0.25;
         public TcpClient tcpClient;
         public bool connected = true;
         private Thread networkThread;
@@ -39,6 +39,8 @@ namespace VirtualRadio.Server
         double audioServerSampleRatio = Constants.AUDIO_RATE / (double)Constants.SERVER_BANDWIDTH;
         long transmitDelay = 0;
         string remoteEndpoint = null;
+        IFilter iFilter = new Butterworth(5000, 48000, false);
+        IFilter qFilter = new Butterworth(5000, 48000, false);
 
         public Client(TcpClient tcpClient)
         {
@@ -54,7 +56,6 @@ namespace VirtualRadio.Server
             networkThread.Name = $"Network Thread {remoteEndpoint}";
             networkThread.Start();
             Console.WriteLine($"Client connected {remoteEndpoint}");
-            
         }
 
         public void QueueBytes(byte[] input, int inputLength)
@@ -85,7 +86,7 @@ namespace VirtualRadio.Server
             }
 
             double carrierOffset = vfo - Constants.SERVER_BANDWIDTH / 2.0;
-
+            Complex sendSample;
             for (int i = 0; i < samples.Length; i++)
             {
                 sendSampleTime += audioServerSampleRatio;
@@ -106,19 +107,22 @@ namespace VirtualRadio.Server
                     {
                         return;
                     }
+                    sendSample = transmitSamples[transmitPos];
+                    iFilter.AddSample(sendSample.Real);
+                    qFilter.AddSample(sendSample.Imaginary);
                 }
 
                 if (radioMode == RadioMode.AM)
                 {
                     //AM mode
-                    double amOffset = (transmitSamples[transmitPos].Real + 1.0) / 2.0;
+                    double amOffset = (iFilter.GetSample() + 1.0) / 2.0;
                     samples[i] = samples[i] + new Complex(SEND_VOLUME * Math.Cos(carrierAngle) * amOffset, SEND_VOLUME * Math.Sin(carrierAngle) * amOffset);
                 }
 
                 //FM mode
                 if (radioMode == RadioMode.FM)
                 {
-                    double fmFreqOffset = transmitSamples[transmitPos].Real * Constants.FM_BANDWIDTH / 2.0;
+                    double fmFreqOffset = iFilter.GetSample() * Constants.FM_BANDWIDTH / 2.0;
                     carrierAngle += (Math.Tau * fmFreqOffset) / (double)Constants.SERVER_BANDWIDTH;
                     samples[i] = samples[i] + new Complex(SEND_VOLUME * Math.Cos(carrierAngle), SEND_VOLUME * Math.Sin(carrierAngle));
                 }
@@ -126,8 +130,8 @@ namespace VirtualRadio.Server
                 //SSB mode
                 if (radioMode == RadioMode.LSB || radioMode == RadioMode.USB)
                 {
-                    Complex amPart = new Complex(Math.Cos(carrierAngle) * transmitSamples[transmitPos].Real, Math.Sin(carrierAngle) * transmitSamples[transmitPos].Real);
-                    Complex amPart90 = new Complex(Math.Sin(carrierAngle) * transmitSamples[transmitPos].Imaginary, -Math.Cos(carrierAngle) * transmitSamples[transmitPos].Imaginary);
+                    Complex amPart = new Complex(Math.Cos(carrierAngle) * iFilter.GetSample(), Math.Sin(carrierAngle) * iFilter.GetSample());
+                    Complex amPart90 = new Complex(Math.Sin(carrierAngle) * qFilter.GetSample(), -Math.Cos(carrierAngle) * qFilter.GetSample());
                     Complex sample = amPart - amPart90;
                     if (radioMode == RadioMode.USB)
                     {

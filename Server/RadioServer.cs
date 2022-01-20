@@ -48,10 +48,41 @@ namespace VirtualRadio.Server
 
             //Server main loop
             bool running = true;
+
+            //sweep freq
+            double sweepFreq = 0;
+            double sweepAngle = 0;
+            double toneAngle = 0;
+
+            Random rand = new Random();
             while (running)
             {
                 //Clear send buffer and
                 Array.Clear(sendSamples, 0, sendSamples.Length);
+                
+                //Add noise
+                for (int i = 0; i < sendSamples.Length; i++)
+                {
+                    sendSamples[i] = new Complex(0.01 * rand.NextDouble(), 0.01 * rand.NextDouble());
+                }
+
+                //Add sweep
+                /*
+                for (int i = 0; i < sendSamples.Length; i++)
+                {
+                    double toneAmp = (Math.Sin(toneAngle) + 1.0) / 2.0;
+                    sendSamples[i] += new Complex(0.1 * toneAmp * Math.Cos(sweepAngle), 0.1 * toneAmp * Math.Sin(sweepAngle));
+                    sweepFreq += 1.0 / (double)(Constants.SERVER_BANDWIDTH * 5);
+                    sweepAngle += Math.Tau * sweepFreq;
+                    sweepAngle = sweepAngle % Math.Tau;
+                    if (sweepFreq > 250000)
+                    {
+                        sweepFreq = 0;
+                    }
+                    toneAngle += (Math.Tau * 50 / 48000);
+                    toneAngle = toneAngle % Math.Tau;
+                }
+                */
                 currentChunk++;
 
                 //Load clients data into samples
