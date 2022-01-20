@@ -9,18 +9,9 @@ namespace VirtualRadio.Client
         private static RadioClient radioClient;
         public static void Main(string[] args)
         {
-            string radioServerAddress = "godarklight.privatedns.org:1235";
-            int audioPort = 1236;
-            if (args.Length >= 1)
-            {
-                radioServerAddress = args[0];
-            }
-            if (args.Length >= 2)
-            {
-                audioPort = Int32.Parse(args[1]);
-            }
+            CmdParser parser = new CmdParser(args);
             Thread.CurrentThread.Name = "Main Thread";
-            radioClient = new RadioClient(radioServerAddress, audioPort);
+            radioClient = new RadioClient(parser);
             if (!radioClient.running)
             {
                 Console.WriteLine("Failed to connect to server");

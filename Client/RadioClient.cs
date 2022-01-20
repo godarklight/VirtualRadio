@@ -33,42 +33,43 @@ namespace VirtualRadio.Client
         TcpListener rtlServer;
         TcpListener audioServer;
         TcpClient audioConnection;
-        public RadioClient(string radioServerAddress, int audioPort)
+        public RadioClient(CmdParser parser)
         {
-            try
+            sendVfo = parser.vfo;
+            sendMode = parser.mode;
+            if (parser.iqPort > 0)
             {
-                rtlServer = new TcpListener(IPAddress.IPv6Any, 1234);
-                rtlServer.Server.DualMode = true;
-                rtlServer.Start();
-                rtlServer.BeginAcceptTcpClient(RtlConnect, null);
-            }
-            catch
-            {
-                Console.WriteLine("Disabling IQ server - already running");
-                rtlServer = null;
-            }
-            try
-            {
-                audioServer = new TcpListener(IPAddress.IPv6Any, audioPort);
-                audioServer.Server.DualMode = true;
-                audioServer.Start();
-                audioServer.BeginAcceptTcpClient(AudioConnect, null);
-            }
-            catch
-            {
-                Console.WriteLine("Disabling Audio Input - already running");
-                audioServer = null;
+                try
+                {
+                    rtlServer = new TcpListener(IPAddress.IPv6Any, parser.iqPort);
+                    rtlServer.Server.DualMode = true;
+                    rtlServer.Start();
+                    rtlServer.BeginAcceptTcpClient(RtlConnect, null);
+                }
+                catch
+                {
+                    Console.WriteLine("Disabling IQ server - already running");
+                    rtlServer = null;
+                }
             }
 
-            int port = 1235;
-            int splitIndex = radioServerAddress.IndexOf(":", StringComparison.InvariantCulture);
-            if (splitIndex > 0)
+            if (parser.audioPort > 0)
             {
-                string portString = radioServerAddress.Substring(splitIndex + 1);
-                port = Int32.Parse(portString);
-                radioServerAddress = radioServerAddress.Substring(0, splitIndex);
+                try
+                {
+                    audioServer = new TcpListener(IPAddress.IPv6Any, parser.audioPort);
+                    audioServer.Server.DualMode = true;
+                    audioServer.Start();
+                    audioServer.BeginAcceptTcpClient(AudioConnect, null);
+                }
+                catch
+                {
+                    Console.WriteLine("Disabling Audio Input - already running");
+                    audioServer = null;
+                }
             }
-            IPHostEntry he = Dns.GetHostEntry(radioServerAddress);
+
+            IPHostEntry he = Dns.GetHostEntry(parser.server);
             if (he.AddressList.Length == 0)
             {
                 Console.WriteLine("No addresses listed in DNS, cannot connect");
@@ -82,7 +83,7 @@ namespace VirtualRadio.Client
                     if (addr.AddressFamily == AddressFamily.InterNetworkV6)
                     {
                         TcpClient temp = new TcpClient(AddressFamily.InterNetworkV6);
-                        temp.BeginConnect(addr, port, FinishConnect, temp);
+                        temp.BeginConnect(addr, parser.serverPort, FinishConnect, temp);
                     }
                 }
             }
@@ -98,7 +99,7 @@ namespace VirtualRadio.Client
                     if (addr.AddressFamily == AddressFamily.InterNetwork)
                     {
                         TcpClient temp = new TcpClient(AddressFamily.InterNetwork);
-                        temp.BeginConnect(addr, port, FinishConnect, temp);
+                        temp.BeginConnect(addr, parser.serverPort, FinishConnect, temp);
                     }
                 }
             }
