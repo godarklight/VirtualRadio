@@ -76,6 +76,7 @@ namespace VirtualRadio.Client
                     }
                     radioClient.sendMode = mode;
                 }
+                Thread.Sleep(10);
             }
             radioClient.Stop();
             clientThread.Join();
