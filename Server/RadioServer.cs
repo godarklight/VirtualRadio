@@ -49,11 +49,6 @@ namespace VirtualRadio.Server
             //Server main loop
             bool running = true;
 
-            //sweep freq
-            double sweepFreq = 0;
-            double sweepAngle = 0;
-            double toneAngle = 0;
-
             Random rand = new Random();
             while (running)
             {
@@ -66,23 +61,6 @@ namespace VirtualRadio.Server
                     sendSamples[i] = new Complex(0.01 * rand.NextDouble(), 0.01 * rand.NextDouble());
                 }
 
-                //Add sweep
-                /*
-                for (int i = 0; i < sendSamples.Length; i++)
-                {
-                    double toneAmp = (Math.Sin(toneAngle) + 1.0) / 2.0;
-                    sendSamples[i] += new Complex(0.1 * toneAmp * Math.Cos(sweepAngle), 0.1 * toneAmp * Math.Sin(sweepAngle));
-                    sweepFreq += 1.0 / (double)(Constants.SERVER_BANDWIDTH * 5);
-                    sweepAngle += Math.Tau * sweepFreq;
-                    sweepAngle = sweepAngle % Math.Tau;
-                    if (sweepFreq > 250000)
-                    {
-                        sweepFreq = 0;
-                    }
-                    toneAngle += (Math.Tau * 50 / 48000);
-                    toneAngle = toneAngle % Math.Tau;
-                }
-                */
                 currentChunk++;
 
                 //Load clients data into samples
@@ -94,11 +72,7 @@ namespace VirtualRadio.Server
                 //Generate samples
                 for (int i = 0; i < sendSamples.Length; i++)
                 {
-                    Complex sendSample = sendSamples[i];
-                    byte iByte = (byte)(((sendSample.Real + 1.0) / 2.0) * 256);
-                    byte qByte = (byte)(((sendSample.Imaginary + 1.0) / 2.0) * 256);
-                    sendBuffer[i * 2] = iByte;
-                    sendBuffer[i * 2 + 1] = qByte;
+                    FormatConvert.IQToByteArray8(sendSamples[i], sendBuffer, i * 2);
                 }
 
                 int compressLength = Compression.Compress(sendBuffer, 0, sendBuffer.Length, compressBuffer);
