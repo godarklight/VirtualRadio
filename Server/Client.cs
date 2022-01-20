@@ -13,7 +13,7 @@ namespace VirtualRadio.Server
     public class Client
     {
         public bool sendIQ = false;
-        public double SEND_VOLUME = 0.1;
+        public double SEND_VOLUME = 0.05;
         public TcpClient tcpClient;
         public bool connected = true;
         private Thread networkThread;
