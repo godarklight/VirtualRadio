@@ -13,7 +13,7 @@ namespace VirtualRadio.Client
 {
     class AudioChunker
     {
-        private IFilter audioFilter = new WindowedSinc(2700, 1024, 48000, false);
+        private IFilter audioFilter;
         HilbertSmoother hilbertSmoother = new HilbertSmoother();
         private ConcurrentQueue<byte[]> sendQueue = new ConcurrentQueue<byte[]>();
         private ConcurrentQueue<byte[]> freeQueue = new ConcurrentQueue<byte[]>();
@@ -24,12 +24,22 @@ namespace VirtualRadio.Client
 
         public AudioChunker()
         {
+            SetFilterMode(RadioMode.USB);
             processThread = new Thread(new ThreadStart(ProcessThread));
             processThread.Start();
             for (int i = 0; i < 16; i++)
             {
                 freeQueue.Enqueue(new byte[2 * Constants.CHUNK_SIZE]);
             }
+        }
+
+        public void SetFilterMode(RadioMode mode)
+        {
+            if (mode == RadioMode.USB || mode == RadioMode.LSB)
+            {
+                audioFilter = new WindowedSinc(2700, 1024, 48000, false);
+            }
+            audioFilter = new WindowedSinc(5000, 2048, 48000, false);
         }
 
         public void Stop()

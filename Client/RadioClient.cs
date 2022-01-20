@@ -196,6 +196,7 @@ namespace VirtualRadio.Client
                 }
                 if (sendMode != null)
                 {
+                    chunker.SetFilterMode((RadioMode)sendMode);
                     BitConverter.GetBytes(IPAddress.HostToNetworkOrder((int)MessageType.SET_MODE)).CopyTo(sendBuffer, 0);
                     BitConverter.GetBytes(IPAddress.HostToNetworkOrder(4)).CopyTo(sendBuffer, 4);
                     BitConverter.GetBytes(IPAddress.HostToNetworkOrder((int)sendMode)).CopyTo(sendBuffer, 8);

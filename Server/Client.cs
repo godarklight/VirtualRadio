@@ -13,7 +13,7 @@ namespace VirtualRadio.Server
     public class Client
     {
         public bool sendIQ = false;
-        public double SEND_VOLUME = 0.2;
+        public double SEND_VOLUME = 0.1;
         public TcpClient tcpClient;
         public bool connected = true;
         private Thread networkThread;
@@ -29,7 +29,7 @@ namespace VirtualRadio.Server
         long lastSend = DateTime.UtcNow.Ticks;
         long TIMEOUT = TimeSpan.TicksPerMinute;
         RadioMode radioMode = RadioMode.USB;
-        double vfo = 135000;
+        double vfo = 125000;
         double carrierAngle = 0;
         double sendSampleTime = 0;
         Complex[] transmitSamples = null;
@@ -38,6 +38,7 @@ namespace VirtualRadio.Server
         Queue<Complex[]> freeQueue = new Queue<Complex[]>();
         double audioServerSampleRatio = Constants.AUDIO_RATE / (double)Constants.SERVER_BANDWIDTH;
         long transmitDelay = 0;
+        string remoteEndpoint = null;
 
         public Client(TcpClient tcpClient)
         {
@@ -49,9 +50,11 @@ namespace VirtualRadio.Server
             this.tcpClient = tcpClient;
             tcpClient.NoDelay = true;
             networkThread = new Thread(new ThreadStart(NetworkThreadMain));
-            networkThread.Name = $"Network Thread {tcpClient.Client.RemoteEndPoint}";
+            remoteEndpoint = tcpClient.Client.RemoteEndPoint.ToString();
+            networkThread.Name = $"Network Thread {remoteEndpoint}";
             networkThread.Start();
-            Console.WriteLine($"Client connected {tcpClient.Client.RemoteEndPoint}");
+            Console.WriteLine($"Client connected {remoteEndpoint}");
+            
         }
 
         public void QueueBytes(byte[] input, int inputLength)
@@ -160,7 +163,7 @@ namespace VirtualRadio.Server
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine($"Client error: {e.Message}");
+                        Console.WriteLine($"Client {remoteEndpoint} error: {e.Message}");
                         connected = false;
                     }
                     if (readBytes == 0)
@@ -206,7 +209,7 @@ namespace VirtualRadio.Server
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine($"Client error: {e.Message}");
+                        Console.WriteLine($"Client {remoteEndpoint} error: {e.Message}");
                         connected = false;
                     }
                     compressLength = 0;
@@ -224,7 +227,7 @@ namespace VirtualRadio.Server
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine($"Client error: {e.Message}");
+                        Console.WriteLine($"Client {remoteEndpoint} error: {e.Message}");
                         connected = false;
                     }
                 }
@@ -237,10 +240,10 @@ namespace VirtualRadio.Server
         }
             catch (Exception e)
             {
-                Console.WriteLine($"Client error: {e.Message}");
+                Console.WriteLine($"Client {remoteEndpoint} error: {e.Message}");
             }
 #endif
-            Console.WriteLine($"Client {tcpClient.Client.RemoteEndPoint} disconnected");
+            Console.WriteLine($"Client {remoteEndpoint} disconnected");
             connected = false;
         }
 
@@ -264,9 +267,21 @@ namespace VirtualRadio.Server
                 case MessageType.DATA:
                     int bytesToAdd = Compression.Decompress(receiveBuffer, 0, receiveSize, buffer);
                     Complex[] free = null;
-                    while (!freeQueue.TryDequeue(out free))
+                    if (!freeQueue.TryDequeue(out free))
                     {
-                        Thread.Sleep(1);
+                        //The transmit buffers have been filled, let's assume they aren't sending at the correct audio rate and clear the buffers.
+                        Console.WriteLine($"Client {remoteEndpoint} clearing transmit buffers, client sending rate too fast");
+                        Complex[] moveObject = null;
+                        while (transmitQueue.TryDequeue(out moveObject))
+                        {
+                            freeQueue.Enqueue(moveObject);
+                        }
+                        if (!freeQueue.TryDequeue(out free))
+                        {
+                            //I don't think this is possible
+                            Console.WriteLine($"Client {remoteEndpoint}: No transmit buffers available, disconnecting");
+                            connected = false;
+                        }
                     }
                     for (int i = 0; i < bytesToAdd / 2; i++)
                     {
