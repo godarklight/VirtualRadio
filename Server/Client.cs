@@ -29,7 +29,7 @@ namespace VirtualRadio.Server
         long lastSend = DateTime.UtcNow.Ticks;
         long TIMEOUT = TimeSpan.TicksPerMinute;
         RadioMode radioMode = RadioMode.USB;
-        double vfo = 125000;
+        double vfo = 0;
         double carrierAngle = 0;
         double sendSampleTime = 0;
         Complex[] transmitSamples = null;
@@ -39,8 +39,8 @@ namespace VirtualRadio.Server
         double audioServerSampleRatio = Constants.AUDIO_RATE / (double)Constants.SERVER_BANDWIDTH;
         long transmitDelay = 0;
         string remoteEndpoint = null;
-        IFilter iFilter = new Butterworth(5000, 48000, false);
-        IFilter qFilter = new Butterworth(5000, 48000, false);
+        Complex lastSample = Complex.Zero;
+        Complex sendSample = Complex.Zero;
 
         public Client(TcpClient tcpClient)
         {
@@ -79,14 +79,13 @@ namespace VirtualRadio.Server
             {
                 transmitQueue.TryDequeue(out transmitSamples);
                 transmitDelay = 0;
+                sendSample = transmitSamples[0];
             }
             if (transmitSamples == null)
             {
                 return;
             }
-
             double carrierOffset = vfo - Constants.SERVER_BANDWIDTH / 2.0;
-            Complex sendSample;
             for (int i = 0; i < samples.Length; i++)
             {
                 sendSampleTime += audioServerSampleRatio;
@@ -107,38 +106,37 @@ namespace VirtualRadio.Server
                     {
                         return;
                     }
+                    lastSample = sendSample;
                     sendSample = transmitSamples[transmitPos];
-                    iFilter.AddSample(sendSample.Real);
-                    qFilter.AddSample(sendSample.Imaginary);
                 }
+                Complex interpolated = ((1.0 - sendSampleTime) * lastSample) + (sendSampleTime * sendSample);
+                Complex carrier = new Complex(Math.Cos(carrierAngle), Math.Sin(carrierAngle));
 
                 if (radioMode == RadioMode.AM)
                 {
                     //AM mode
-                    double amOffset = (iFilter.GetSample() + 1.0) / 2.0;
-                    samples[i] = samples[i] + new Complex(SEND_VOLUME * Math.Cos(carrierAngle) * amOffset, SEND_VOLUME * Math.Sin(carrierAngle) * amOffset);
+                    double amOffset = (interpolated.Real + 1.0) / 2.0;
+                    samples[i] = samples[i] + (carrier * amOffset * SEND_VOLUME);
                 }
 
                 //FM mode
                 if (radioMode == RadioMode.FM)
                 {
-                    double fmFreqOffset = iFilter.GetSample() * Constants.FM_BANDWIDTH / 2.0;
+                    double fmFreqOffset = interpolated.Real * Constants.FM_BANDWIDTH / 2.0;
                     carrierAngle += (Math.Tau * fmFreqOffset) / (double)Constants.SERVER_BANDWIDTH;
-                    samples[i] = samples[i] + new Complex(SEND_VOLUME * Math.Cos(carrierAngle), SEND_VOLUME * Math.Sin(carrierAngle));
+                    samples[i] = samples[i] + (carrier * SEND_VOLUME);
                 }
 
                 //SSB mode
                 if (radioMode == RadioMode.LSB || radioMode == RadioMode.USB)
                 {
-                    Complex amPart = new Complex(Math.Cos(carrierAngle) * iFilter.GetSample(), Math.Sin(carrierAngle) * iFilter.GetSample());
-                    Complex amPart90 = new Complex(Math.Sin(carrierAngle) * qFilter.GetSample(), -Math.Cos(carrierAngle) * qFilter.GetSample());
-                    Complex sample = amPart - amPart90;
+                    Complex signal = interpolated;
                     if (radioMode == RadioMode.USB)
                     {
-                        sample = amPart + amPart90;
+                        signal = Complex.Conjugate(signal);
                     }
-                    sample = new Complex(SEND_VOLUME * sample.Real, SEND_VOLUME * sample.Imaginary);
-                    samples[i] = samples[i] + sample;
+                    Complex addSample = carrier * signal;
+                    samples[i] = samples[i] + addSample;
                 }
 
                 //Increase carrier phase

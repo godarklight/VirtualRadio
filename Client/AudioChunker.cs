@@ -13,6 +13,7 @@ namespace VirtualRadio.Client
 {
     class AudioChunker
     {
+        private RadioMode mode;
         private IFilter audioFilter;
         HilbertSmoother hilbertSmoother = new HilbertSmoother();
         private ConcurrentQueue<byte[]> sendQueue = new ConcurrentQueue<byte[]>();
@@ -54,6 +55,7 @@ namespace VirtualRadio.Client
 
         public void SetFilterMode(RadioMode mode)
         {
+            this.mode = mode;
             if (mode == RadioMode.AM || mode == RadioMode.FM)
             {
                 audioFilter = new LayeredFilter(GenerateFilterAMFM, 2);
@@ -84,8 +86,13 @@ namespace VirtualRadio.Client
                         double filteredDouble = audioFilter.GetSample();
                         samples[i] = filteredDouble;
                     }
-                    hilbertSmoother.AddChunk(samples);
-                    Complex[] hilbertSmooth = hilbertSmoother.GetChunk();
+                    Complex[] hilbertSmooth = samples;
+                    //Only run the hilbert transform on LSB/USB mode
+                    if (mode == RadioMode.LSB || mode == RadioMode.USB)
+                    {
+                        hilbertSmoother.AddChunk(samples);
+                        hilbertSmooth = hilbertSmoother.GetChunk();
+                    }
                     if (hilbertSmooth != null)
                     {
                         //Complex[] hilbert = Hilbert.Calculate(samples);
