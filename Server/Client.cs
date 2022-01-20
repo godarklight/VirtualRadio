@@ -135,7 +135,7 @@ namespace VirtualRadio.Server
                     {
                         signal = Complex.Conjugate(signal);
                     }
-                    Complex addSample = carrier * signal;
+                    Complex addSample = carrier * (signal * SEND_VOLUME);
                     samples[i] = samples[i] + addSample;
                 }
 
