@@ -19,6 +19,7 @@ namespace VirtualRadio.Client
         public int audioPort = 1236;
         public string server = "godarklight.privatedns.org";
         public int serverPort = 1235;
+        public bool pulse = false;
         public CmdParser(string[] args)
         {
             foreach (string arg in args)
@@ -62,6 +63,10 @@ namespace VirtualRadio.Client
                 if (arg == "--no-iq")
                 {
                     iqPort = 0;
+                }
+                if (arg == "--pulse")
+                {
+                    pulse = true;
                 }
                 if (arg == "--help" || arg == "-h")
                 {

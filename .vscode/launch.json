@@ -22,6 +22,7 @@
             "preLaunchTask": "build",
             "program": "${workspaceFolder}/Client/bin/Debug/net6.0/Client.dll",
             "args": [
+                "--vfo=125000",
                 "--server=127.0.0.1:1235"
             ],
             "cwd": "${workspaceFolder}",
@@ -35,6 +36,7 @@
             "preLaunchTask": "build",
             "program": "${workspaceFolder}/Client/bin/Debug/net6.0/Client.dll",
             "args": [
+                "--vfo=125000",
                 "--audioPort=1237",
                 "--server=127.0.0.1:1235",
             ],
@@ -49,6 +51,9 @@
             "preLaunchTask": "build",
             "program": "${workspaceFolder}/Client/bin/Debug/net6.0/Client.dll",
             "args": [
+                "--vfo=15000",
+                "--audioPort=4712",
+                "--pulse",
             ],
             "cwd": "${workspaceFolder}",
             "stopAtEntry": false,

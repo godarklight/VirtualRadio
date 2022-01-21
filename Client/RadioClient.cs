@@ -5,7 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Numerics;
 using System.Threading;
-
+using System.Diagnostics;
 using VirtualRadio.Common;
 
 namespace VirtualRadio.Client
@@ -53,7 +53,7 @@ namespace VirtualRadio.Client
                 }
             }
 
-            if (parser.audioPort > 0)
+            if (parser.audioPort > 0 && !parser.pulse)
             {
                 try
                 {
@@ -67,6 +67,23 @@ namespace VirtualRadio.Client
                     Console.WriteLine("Disabling Audio Input - already running");
                     audioServer = null;
                 }
+            }
+            if (parser.pulse)
+            {
+                Process p = Process.Start(new ProcessStartInfo("pactl", "unload-module module-simple-protocol-tcp"));
+                p.WaitForExit();
+                p = Process.Start(new ProcessStartInfo("pactl", "unload-module module-loopback"));
+                p.WaitForExit();
+                p = Process.Start(new ProcessStartInfo("pactl", "unload-module module-null-sink"));
+                p.WaitForExit();
+                p = Process.Start(new ProcessStartInfo("pactl", $"load-module module-null-sink sink_name=VirtualRadio sink_properties=device.description=VirtualRadio format=s16le rate=48000 channels=1"));
+                p.WaitForExit();
+                p = Process.Start(new ProcessStartInfo("pactl", $"load-module module-loopback source=VirtualRadio.monitor"));
+                p.WaitForExit();
+                p = Process.Start(new ProcessStartInfo("pactl", $"load-module module-simple-protocol-tcp listen=::1 port={parser.audioPort} record=1 channels=1 rate=48000 source=VirtualRadio.monitor"));
+                p.WaitForExit();
+                audioConnection = new TcpClient();
+                audioConnection.Connect(IPAddress.IPv6Loopback, parser.audioPort);
             }
 
             IPHostEntry he = Dns.GetHostEntry(parser.server);
