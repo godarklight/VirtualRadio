@@ -13,5 +13,6 @@ namespace VirtualRadio.Common
         public const int SERVER_BANDWIDTH = 250000;
         public const int AUDIO_RATE = 48000;
         public const int FM_BANDWIDTH = 12500;
+        public const int WFM_BANDWIDTH = 150000;
     }
 }

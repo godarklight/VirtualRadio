@@ -127,6 +127,14 @@ namespace VirtualRadio.Server
                     samples[i] = samples[i] + (carrier * SEND_VOLUME);
                 }
 
+                //WFM mode
+                if (radioMode == RadioMode.WFM)
+                {
+                    double fmFreqOffset = interpolated.Real * Constants.WFM_BANDWIDTH / 2.0;
+                    carrierAngle += (Math.Tau * fmFreqOffset) / (double)Constants.SERVER_BANDWIDTH;
+                    samples[i] = samples[i] + (carrier * SEND_VOLUME);
+                }
+
                 //SSB mode
                 if (radioMode == RadioMode.LSB || radioMode == RadioMode.USB)
                 {

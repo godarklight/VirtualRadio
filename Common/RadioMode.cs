@@ -6,5 +6,6 @@ namespace VirtualRadio.Common
         FM = 1,
         USB = 2,
         LSB = 3,
+        WFM = 4,
     }
 }
