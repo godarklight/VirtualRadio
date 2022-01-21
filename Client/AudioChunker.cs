@@ -34,6 +34,16 @@ namespace VirtualRadio.Client
             }
         }
 
+        private IFilter GenerateFilterWFM(int index)
+        {
+            if (index == 0)
+            {
+                return new WindowedSinc(15000, 1024, 48000, false);
+            }
+            return new Butterworth(15000, 48000, false);
+
+        }
+
         private IFilter GenerateFilterAMFM(int index)
         {
             if (index == 0)
@@ -56,13 +66,19 @@ namespace VirtualRadio.Client
         public void SetFilterMode(RadioMode mode)
         {
             this.mode = mode;
-            if (mode == RadioMode.AM || mode == RadioMode.FM)
+            switch (mode)
             {
-                audioFilter = new LayeredFilter(GenerateFilterAMFM, 2);
-            }
-            else
-            {
-                audioFilter = new LayeredFilter(GenerateFilterSSB, 2);
+                case RadioMode.USB:
+                case RadioMode.LSB:
+                    audioFilter = new LayeredFilter(GenerateFilterSSB, 2);
+                    break;
+                case RadioMode.AM:
+                case RadioMode.FM:
+                    audioFilter = new LayeredFilter(GenerateFilterAMFM, 2);
+                    break;
+                case RadioMode.WFM:
+                    audioFilter = new LayeredFilter(GenerateFilterWFM, 2);
+                    break;
             }
         }
 
